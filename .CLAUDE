@@ -1,0 +1,165 @@
+Python 3.12
+aiogram 3.7+ — async telegram bot framework
+SQLAlchemy 2.0 async — ORM
+PostgreSQL 16 — база данных
+asyncpg — async драйвер для PostgreSQL
+APScheduler 3.10 — отложенные сообщения
+Redis 7 — очередь задач и кэш
+Alembic — миграции базы данных
+Pydantic v2 — валидация данных
+Docker + Docker Compose — деплой
+python-dotenv — переменные окружения
+uv -пакетный менеджер
+
+
+/start
+→ Бот: Приветствие эксперта
+  "Привет! Я [имя]. Помогаю [кому] достичь [результата]."
+  [Кнопка: Получить бесплатный материал 🔥]
+  [Кнопка: Узнать обо мне]
+
+→ Нажал "Получить бесплатный материал"
+  Бот: "Материал уже ждёт!
+  Сначала подпишись на канал — там я каждый день
+  делюсь [темой] 👇"
+  [Кнопка: Подписаться на канал]
+  [Кнопка: Я подписался ✅]
+
+→ Нажал "Я подписался"
+  Бот проверяет через get_chat_member()
+
+  Если НЕ подписан:
+  "Хм, не вижу тебя в канале 🤔
+  Подпишись и нажми кнопку снова"
+  [Кнопка: Подписаться]
+  [Кнопка: Я подписался ✅]
+
+  Если подписан:
+  "✅ Отлично, ты в канале!
+  Держи материал 👇"
+  → Присылает лид-магнит (PDF/видео/текст)
+
+[Через 24 часа — APScheduler]
+  Бот: "Кстати, вот история клиента
+  который достиг [результата] за [срок] 💪
+  [кейс 3-4 предложения]"
+
+[Через 48 часов — APScheduler]
+  Бот: "[Название курса/услуги]
+  [Описание + главные выгоды]
+  Цена: [сумма]"
+  [Кнопка: Хочу купить 🔥]
+  [Кнопка: Узнать подробнее]
+
+→ Нажал "Хочу купить"
+  Бот: "Отлично! Оставь контакт —
+  свяжемся в течение часа 👇"
+  → Пользователь пишет @username или телефон
+  Бот: "✅ Передал! Скоро свяжемся."
+  → Владелец получает уведомление
+
+→ Нажал "Узнать подробнее"
+  Бот: Подробное описание продукта
+  [Кнопка: Хочу купить 🔥]
+  [Кнопка: Написать напрямую]
+
+
+
+  /start
+→ Бот регистрирует как владельца
+→ Показывает главное меню
+  [Настроить воронку]
+  [Мои лиды]
+  [Статистика]
+  [Управление]
+
+/setup — настройка воронки пошагово:
+  Шаг 1: Введи приветственное сообщение
+  Шаг 2: Введи username канала (@channel)
+  Шаг 3: Загрузи лид-магнит (файл или текст)
+  Шаг 4: Введи прогревающее сообщение (день 2)
+  Шаг 5: Введи оффер (день 3) + цену
+  Шаг 6: Подтверди → воронка активна ✅
+
+/leads — список лидов:
+  👤 @alex | 2 часа назад
+  👤 @maria | вчера 18:30
+  👤 @ivan | 3 дня назад
+
+/stats — статистика:
+  📊 Подписчиков всего: 143
+  📨 Получили лид-магнит: 98
+  👀 Дошли до оффера: 67
+  🔥 Нажали купить: 12
+  💰 Конверсия: 8.4%
+
+Уведомление о новом лиде:
+  🔔 Новый лид!
+  👤 @alex_buyer
+  📱 +7 999 123 45 67
+  ⏰ Только что
+  [Написать клиенту]
+
+
+
+  -- Пользователи
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY,
+    username TEXT,
+    role TEXT DEFAULT 'buyer',
+    funnel_step INTEGER DEFAULT 0,
+    subscribed_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Воронка владельца
+CREATE TABLE funnel_settings (
+    id SERIAL PRIMARY KEY,
+    owner_id BIGINT NOT NULL,
+    channel_username TEXT NOT NULL,
+    welcome_text TEXT NOT NULL,
+    lead_magnet_file_id TEXT,
+    lead_magnet_text TEXT,
+    warm_up_text TEXT NOT NULL,
+    offer_text TEXT NOT NULL,
+    offer_price TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Лиды
+CREATE TABLE leads (
+    id SERIAL PRIMARY KEY,
+    owner_id BIGINT NOT NULL,
+    buyer_id BIGINT NOT NULL,
+    buyer_username TEXT,
+    buyer_contact TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Отложенные сообщения
+CREATE TABLE scheduled_messages (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    message_type TEXT NOT NULL,
+    send_at TIMESTAMP NOT NULL,
+    is_sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+
+welcome-bot/
+├── bot/
+│   ├── handlers/
+│   ├── services/
+│   ├── models/       ← SQLAlchemy модели
+│   ├── schemas/      ← Pydantic схемы (новый слой)
+│   ├── keyboards/
+│   ├── middlewares/
+│   └── main.py
+├── migrations/
+├── config.py
+├── docker-compose.yml
+├── Dockerfile
+└── .env.example
