@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, Text, func
+from sqlalchemy import BigInteger, DateTime, Enum as SQLAlchemyEnum, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
+from src.core.enums import UserRole
 
 
 class User(Base):
@@ -10,7 +11,10 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str | None] = mapped_column(Text)
-    role: Mapped[str] = mapped_column(Text, default="buyer")
+    role: Mapped[UserRole] = mapped_column(
+        SQLAlchemyEnum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.BUYER,
+    )
     funnel_step: Mapped[int] = mapped_column(Integer, default=0)
     subscribed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
